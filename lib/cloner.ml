@@ -53,7 +53,11 @@ module Cached = struct
 
   let commit_branch_name ~commit = "commit-" ^ commit
 
-  let cache_branch_name ~ref = "branch-" ^ ref
+  let cache_branch_name ~ref =
+    let open Git.Ref in
+    match ref.kind with
+    | Branch -> "branch-" ^ ref.name
+    | Tag -> "tag-" ^ ref.name
 
   (** Check if the cache repository is initialized and if not, initialize it *)
   let check_duniverse_cache_directory ~repo ~remote =
@@ -80,20 +84,20 @@ module Cached = struct
     if Exec.git_branch_exists ~repo ~branch then Ok true
     else Exec.git_fetch_to ~repo ~remote_name:"origin" ~ref ~branch () >>| fun () -> false
 
-  let git_commit_branch_exists_or_create ~repo ~ref ~branch ~commit ~commit_branch () =
+  let git_commit_branch_exists_or_create ~repo ~ref ~branch ~commit_branch () =
     let open Result.O in
     if Exec.git_branch_exists ~repo ~branch:commit_branch then Ok true
     else
       git_branch_exists_or_create ~repo ~ref ~branch >>= fun cached ->
-      Exec.git_branch ~repo ~ref:commit ~branch_name:commit_branch >>| fun () -> cached
+      Exec.git_branch ~repo ~ref_name:ref.commit ~branch_name:commit_branch >>| fun () -> cached
 
   (** Check if a remote with a given tag exists in the cache as a branch, and clone to cache if it
       doesn't exist *)
-  let check_package_cache_branch ~repo ~ref ~commit () =
+  let check_package_cache_branch ~repo ~ref () =
     let open Result.O in
-    let commit_branch = commit_branch_name ~commit in
+    let commit_branch = commit_branch_name ~commit:ref.Git.Ref.commit in
     let branch = cache_branch_name ~ref in
-    git_commit_branch_exists_or_create ~repo ~ref ~branch ~commit ~commit_branch ()
+    git_commit_branch_exists_or_create ~repo ~ref ~branch ~commit_branch ()
     >>| fun cached -> (commit_branch, cached)
 
   (** Clone to output_dir using the cache *)
@@ -103,36 +107,38 @@ module Cached = struct
     Exec.git_clone ~branch:cache_branch_name ~remote:(Fpath.to_string repo) ~output_dir
     >>| fun () -> cached
 
-  let clone_to ~output_dir ~remote ~ref ~commit cache_dir =
+  let clone_to ~output_dir ~remote ~ref cache_dir =
     let open Result.O in
     get_cache_directory ~remote cache_dir >>= fun repo ->
-    check_package_cache_branch ~repo ~ref ~commit () >>= clone_from_cache ~output_dir ~repo
+    check_package_cache_branch ~repo ~ref () >>= clone_from_cache ~output_dir ~repo
 end
 
 module Uncached = struct
-  let warn_about_head_commit ~ref ~commit () =
+  let warn_about_head_commit ~ref () =
     Logs.info (fun l ->
-        l "%a is not the HEAD commit for %a anymore" Styled_pp.commit commit Styled_pp.branch ref
+        let { Git.Ref.name; commit; _ } = ref in
+        l "%a is not the HEAD commit for %a anymore" Styled_pp.commit commit Styled_pp.branch name
     );
     Logs.info (fun l -> l "You might want to consider running 'duniverse update'");
     ()
 
-  let checkout_if_needed ~head_commit ~output_dir ~ref ~commit () =
+  let checkout_if_needed ~head_commit ~output_dir ~ref () =
     let open Result.O in
-    if String.equal commit head_commit then Ok ()
+    if String.equal ref.Git.Ref.commit head_commit then Ok ()
     else (
-      warn_about_head_commit ~ref ~commit ();
+      warn_about_head_commit ~ref ();
       Exec.git_unshallow ~repo:output_dir () >>= fun () ->
-      Exec.git_checkout ~repo:output_dir commit )
+      Exec.git_checkout ~repo:output_dir ref.commit )
 
-  let clone_to ~output_dir ~remote ~ref ~commit () =
+  let clone_to ~output_dir ~remote ~ref () =
     let open Result.O in
-    Exec.git_shallow_clone ~output_dir ~remote ~ref () >>= fun () ->
-    Exec.git_rev_parse ~repo:output_dir ~ref:"HEAD" () >>= fun head_commit ->
-    checkout_if_needed ~head_commit ~output_dir ~ref ~commit () >>= fun () -> Ok false
+    Exec.git_shallow_clone ~output_dir ~remote ~ref_name:ref.Git.Ref.name ()
+    >>= fun () ->
+    Exec.git_rev_parse ~repo:output_dir ~ref_name:"HEAD" () >>= fun head_commit ->
+    checkout_if_needed ~head_commit ~output_dir ~ref () >>= fun () -> Ok false
 end
 
-let clone_to ~output_dir ~remote ~ref ~commit { cache_dir } =
+let clone_to ~output_dir ~remote ~ref { cache_dir } =
   match cache_dir with
-  | None -> Uncached.clone_to ~output_dir ~remote ~ref ~commit ()
-  | Some cache_dir -> Cached.clone_to ~output_dir ~remote ~ref ~commit cache_dir
+  | None -> Uncached.clone_to ~output_dir ~remote ~ref ()
+  | Some cache_dir -> Cached.clone_to ~output_dir ~remote ~ref cache_dir

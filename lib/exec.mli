@@ -23,9 +23,9 @@ val git_default_branch : remote:string -> unit -> (string, [> Rresult.R.msg ]) r
     parsing the output looking for HEAD branch: <branch_name> *)
 
 val git_shallow_clone :
-  output_dir:Fpath.t -> remote:string -> ref:string -> unit -> (unit, [> Rresult.R.msg ]) result
+  output_dir:Fpath.t -> remote:string -> ref_name:string -> unit -> (unit, [> Rresult.R.msg ]) result
 
-val git_rev_parse : repo:Fpath.t -> ref:string -> unit -> (string, [> Rresult.R.msg ]) result
+val git_rev_parse : repo:Fpath.t -> ref_name:string -> unit -> (string, [> Rresult.R.msg ]) result
 
 val git_unshallow : repo:Fpath.t -> unit -> (unit, [> Rresult.R.msg ]) result
 
@@ -58,7 +58,7 @@ val git_resolve : remote:string -> ref:Git.Ref.t -> (Git.Ref.resolved, Rresult.R
 (** [git_resolve ~remote ~ref] runs git ls-remote to resolve the given ref to a commit hash *)
 
 val git_branch :
-  repo:Fpath.t -> ref:Git.Ref.t -> branch_name:string -> (unit, [> Rresult.R.msg ]) result
+  repo:Fpath.t -> ref_name:string -> branch_name:string -> (unit, [> Rresult.R.msg ]) result
 
 val run_opam_package_deps : root:Fpath.t -> string list -> (string list, [> Rresult.R.msg ]) result
 (** [run_opam_packages_deps ~root packages] returns a list of versioned constrained packages that
@@ -98,7 +98,7 @@ val git_remote_remove : repo:Fpath.t -> remote_name:string -> (unit, [> Rresult.
 val git_fetch_to :
   repo:Fpath.t ->
   remote_name:string ->
-  ref:string ->
+  ref:Git.Ref.resolved ->
   branch:string ->
   ?force:bool ->
   unit ->

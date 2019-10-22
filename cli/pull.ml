@@ -68,10 +68,10 @@ let mark_duniverse_content_as_vendored ~duniverse_dir =
 let pull ~duniverse_dir ~cache src_dep =
   let open Result.O in
   let open Duniverse.Deps.Source in
-  let { dir; upstream; ref = { Git.Ref.t = ref; commit }; _ } = src_dep in
+  let { dir; upstream; ref; _ } = src_dep in
   let output_dir = Fpath.(duniverse_dir / dir) in
   Bos.OS.Dir.delete ~recurse:true output_dir >>= fun () ->
-  Cloner.clone_to ~output_dir ~remote:upstream ~ref ~commit cache
+  Cloner.clone_to ~output_dir ~remote:upstream ~ref cache
   |> Rresult.R.reword_error (fun (`Msg _) -> `Commit_is_gone dir)
   >>= fun cached ->
   Common.Logs.app (fun l ->

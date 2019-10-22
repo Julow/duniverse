@@ -23,16 +23,16 @@ module Deps = struct
 
   module Source = struct
     module Package = struct
-      type t = { opam : Opam.t; upstream : string; ref : Git.Ref.t }
+      type t = { opam : Opam.t; upstream : string; tag : string }
 
       let equal t t' =
         Opam.equal t.opam t'.opam
         && String.equal t.upstream t'.upstream
-        && Git.Ref.equal t.ref t'.ref
+        && String.equal t.tag t'.tag
 
-      let raw_pp fmt { opam; upstream; ref } =
-        Format.fprintf fmt "@[<hov 2>{ opam = %a;@ upstream = %S;@ ref = %S }@]" Opam.raw_pp opam
-          upstream ref
+      let raw_pp fmt { opam; upstream; tag } =
+        Format.fprintf fmt "@[<hov 2>{ opam = %a;@ upstream = %S;@ tag = %s }@]" Opam.raw_pp opam
+          upstream tag
     end
 
     type 'ref t = {
@@ -58,8 +58,8 @@ module Deps = struct
         "@[<hov 2>{ dir = %S;@ upstream = %S;@ ref = %a;@ provided_packages = %a }@]" dir upstream
         pp_ref ref (list Opam.raw_pp) provided_packages
 
-    let from_package { Package.opam; upstream; ref } =
-      { dir = opam.name; upstream; ref; provided_packages = [ opam ] }
+    let from_package { Package.opam; upstream; tag } =
+      { dir = opam.name; upstream; ref = (Git.Ref.Tag, tag); provided_packages = [ opam ] }
 
     let aggregate t package =
       let package_name = package.Package.opam.name in
@@ -67,9 +67,12 @@ module Deps = struct
         match String.compare t.dir package_name with Lt | Eq -> t.dir | Gt -> package_name
       in
       let new_ref =
-        match Ordering.of_int (OpamVersionCompare.compare t.ref package.ref) with
-        | Gt | Eq -> t.ref
-        | Lt -> package.ref
+        match t.ref with
+        | Git.Ref.Tag, t_tag -> (
+            match Ordering.of_int (OpamVersionCompare.compare t_tag package.tag) with
+            | Gt | Eq -> t.ref
+            | Lt -> (Git.Ref.Tag, package.tag) )
+        | Git.Ref.Branch, _ -> t.ref
       in
       { t with
         dir = new_dir;
@@ -111,12 +114,12 @@ module Deps = struct
       match entry with
       | { dev_repo = `Virtual; _ } | { dev_repo = `Error _; _ } -> Ok None
       | { is_dune = false; package = { name; version }; _ } -> Ok (Some (Opam { name; version }))
-      | { is_dune = true; dev_repo = `Git upstream; tag = Some ref; package = { name; version } }
+      | { is_dune = true; dev_repo = `Git upstream; tag = Some tag; package = { name; version } }
         ->
-          Ok (Some (Source { opam = { name; version }; upstream; ref }))
+          Ok (Some (Source { opam = { name; version }; upstream; tag }))
       | { is_dune = true; dev_repo = `Git upstream; tag = None; package = { name; version } } ->
           get_default_branch upstream >>= fun ref ->
-          Ok (Some (Source { opam = { name; version }; upstream; ref }))
+          Ok (Some (Source { opam = { name; version }; upstream; ref = (Git.Ref.Branch, ref) }))
   end
 
   type 'ref t = { opamverse : Opam.t list; duniverse : 'ref Source.t list } [@@deriving sexp]

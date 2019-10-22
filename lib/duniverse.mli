@@ -25,7 +25,7 @@ module Deps : sig
     val raw_pp : 'ref Fmt.t -> 'ref t Fmt.t
 
     module Package : sig
-      type t = { opam : Opam.t; upstream : string; ref : unresolved }
+      type t = { opam : Opam.t; upstream : string; tag : string }
     end
 
     val aggregate : unresolved t -> Package.t -> unresolved t

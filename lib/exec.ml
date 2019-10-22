@@ -72,12 +72,12 @@ let is_git_repo_clean ~repo () =
   let cmd = Cmd.(v "git" % "-C" % p repo % "diff" % "--quiet") in
   match OS.Cmd.(run_out ~err:err_log cmd |> to_string) with Ok _ -> Ok true | Error _ -> Ok false
 
-let git_shallow_clone ~output_dir ~remote ~ref () =
-  let cmd = Cmd.(v "git" % "clone" % "--depth=1" % "-b" % ref % remote % p output_dir) in
+let git_shallow_clone ~output_dir ~remote ~ref_name () =
+  let cmd = Cmd.(v "git" % "clone" % "--depth=1" % "-b" % ref_name % remote % p output_dir) in
   run_and_log cmd
 
-let git_rev_parse ~repo ~ref () =
-  let cmd = Cmd.(v "git" % "-C" % p repo % "rev-parse" % ref) in
+let git_rev_parse ~repo ~ref_name () =
+  let cmd = Cmd.(v "git" % "-C" % p repo % "rev-parse" % ref_name) in
   run_and_log_s cmd
 
 let git_unshallow ~repo () = run_git ~repo Cmd.(v "fetch" % "--unshallow")
@@ -120,15 +120,15 @@ let git_merge ?(args = Cmd.empty) ~from ~repo () = run_git ~repo Cmd.(v "merge" 
 let git_resolve ~remote ~ref =
   run_and_log_l Cmd.(v "git" % "ls-remote" % remote %% Git.Ls_remote.ref_arg ref) >>= fun output ->
   match Git.Ls_remote.commit_pointed_by ~ref output with
-  | Ok commit -> Ok { Git.Ref.t = ref; commit }
+  | Ok _ as resolved -> resolved
   | Error `No_such_ref -> Rresult.R.error_msgf "No %a ref for %s" Git.Ref.pp ref remote
   | Error `Multiple_such_refs ->
       Rresult.R.error_msgf "A branch and a tag share the name %a on the remote %s" Git.Ref.pp ref
         remote
   | Error (`Msg _) as err -> err
 
-let git_branch ~repo ~ref ~branch_name =
-  run_git ~ignore_error:false ~repo Cmd.(v "branch" % branch_name % ref)
+let git_branch ~repo ~ref_name ~branch_name =
+  run_git ~ignore_error:false ~repo Cmd.(v "branch" % branch_name % ref_name)
 
 let git_remote_add ~repo ~remote_url ~remote_name =
   run_git ~repo Cmd.(v "remote" % "add" % remote_name % remote_url)
@@ -136,7 +136,8 @@ let git_remote_add ~repo ~remote_url ~remote_name =
 let git_remote_remove ~repo ~remote_name = run_git ~repo Cmd.(v "remote" % "remove" % remote_name)
 
 let git_fetch_to ~repo ~remote_name ~ref ~branch ?(force = false) () =
-  run_git ~repo Cmd.(v "fetch" % remote_name % ref) >>= fun () ->
+  let ref_name = Git.Ref.ref_name ref in
+  run_git ~repo Cmd.(v "fetch" % remote_name % ref_name) >>= fun () ->
   run_git ~repo Cmd.(v "branch" %% on force (v "-f") % branch % "FETCH_HEAD")
 
 let git_init_bare ~repo = run_and_log Cmd.(v "git" % "init" % "--bare" % p repo)
