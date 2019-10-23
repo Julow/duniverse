@@ -5,7 +5,7 @@ type resolved = Git.Ref.resolved
 module Deps : sig
   module Opam : sig
     (** Type of dependencies to install through opam *)
-    type t = { name : string; version : string option }
+    type t = { name : string; version : string }
 
     val equal : t -> t -> bool
 
@@ -83,8 +83,8 @@ end
 
 module Config : sig
   type t = {
-    root_packages : Types.Opam.package list;
-    excludes : Types.Opam.package list;
+    root_packages : string list;
+    excludes : string list;
     pins : Types.Opam.pin list;
     remotes : string list; [@default []]
     branch : string [@default "master"]

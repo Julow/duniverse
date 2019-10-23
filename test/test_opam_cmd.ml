@@ -57,46 +57,46 @@ let test_classify_package =
     (test_name, `Quick, test_fun)
   in
   [ make_test ~name:"base package"
-      ~package:{ name = "ocaml"; version = None }
+      ~package:{ name = "ocaml"; version = "base" }
       ~expected:(`Virtual, None)
       ();
     make_test ~name:"base package versioned"
-      ~package:{ name = "ocaml"; version = Some "1" }
+      ~package:{ name = "ocaml"; version = "1" }
       ~expected:(`Virtual, None)
       ();
-    make_test ~name:"empty dev-repo" ~package:{ name = "x"; version = None } ~dev_repo:""
+    make_test ~name:"empty dev-repo" ~package:{ name = "x"; version = "1" } ~dev_repo:""
       ~expected:(`Virtual, None)
       ();
-    make_test ~name:"no archive" ~package:{ name = "x"; version = None }
+    make_test ~name:"no archive" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"host.com/path.git" ?archive:None
       ~expected:(`Virtual, None)
       ();
-    make_test ~name:"github dev-repo" ~package:{ name = "x"; version = None }
+    make_test ~name:"github dev-repo" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"git+https://github.com/user/repo.git" ~archive:""
       ~expected:(`Git "https://github.com/user/repo.git", None)
       ();
-    make_test ~name:"guess tag from archive" ~package:{ name = "x"; version = None }
+    make_test ~name:"guess tag from archive" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"git+https://github.com/user/repo.git" ~archive:"file-v1.tbz"
       ~expected:(`Git "https://github.com/user/repo.git", Some "v1")
       ();
-    make_test ~name:"no host" ~package:{ name = "x"; version = None } ~dev_repo:"nohost.git"
+    make_test ~name:"no host" ~package:{ name = "x"; version = "1" } ~dev_repo:"nohost.git"
       ~archive:""
       ~expected:(`Error "dev-repo without host", None)
       ();
-    make_test ~name:"git" ~package:{ name = "x"; version = None }
+    make_test ~name:"git" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"git+https://host.com/some-repo.git" ~archive:"gitpaf#pouf"
       ~expected:(`Git "https://host.com/some-repo.git", None)
       ();
-    make_test ~name:"wrong vcs" ~package:{ name = "x"; version = None }
+    make_test ~name:"wrong vcs" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"hg+https://host.com/some-repo" ~archive:""
       ~expected:(`Error "dev-repo doesn't use git as a VCS", None)
       ();
-    make_test ~name:"use url.src when possible" ~package:{ name = "x"; version = None }
+    make_test ~name:"use url.src when possible" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"git+https://host.com/some-repo.git"
       ~archive:"git+https://host.com/some-fork.git#dev"
       ~expected:(`Git "https://host.com/some-fork.git", Some "dev")
       ();
-    make_test ~name:"fallback to dev_repo" ~package:{ name = "x"; version = None }
+    make_test ~name:"fallback to dev_repo" ~package:{ name = "x"; version = "1" }
       ~dev_repo:"git+https://host.com/some-repo.git"
       ~archive:"https://github.com/user/repo/releases/download/v1.2.3/archive.tbz"
       ~expected:(`Git "https://host.com/some-repo.git", Some "v1.2.3")

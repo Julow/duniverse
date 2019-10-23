@@ -35,8 +35,7 @@ module Opam = struct
 
   let pp_repo = pp_sexp sexp_of_repo
 
-  type package = { name : string; version : string option [@default None] [@sexp_drop_default] }
-  [@@deriving sexp]
+  type package = { name : string; version : string } [@@deriving sexp]
 
   type entry = {
     package : package;
@@ -54,7 +53,7 @@ module Opam = struct
   [@@deriving sexp]
 
   let pp_package ppf { name; version } =
-    match version with None -> Fmt.pf ppf "%s" name | Some v -> Fmt.pf ppf "%s.%s" name v
+    Fmt.pf ppf "%s.%s" name version
 
   let string_of_package pkg = Fmt.strf "%a" pp_package pkg
 

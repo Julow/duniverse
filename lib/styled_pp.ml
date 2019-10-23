@@ -18,5 +18,7 @@ let good pp = Fmt.(styled `Green pp)
 
 let bad pp = Fmt.(styled `Red pp)
 
+let quoted pp = Fmt.(styled `Cyan (quote pp))
+
 let cached fmt cached =
   if cached then Fmt.(styled `Green (const string " [CACHED]")) fmt () else ()

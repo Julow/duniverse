@@ -1,15 +1,22 @@
 open Duniverse_lib
-open Duniverse_lib.Types
+
+let split_opam_name_and_version name =
+  let open Astring in
+  match String.cut ~sep:"." name with
+  | None -> name
+  | Some (name, _) -> name
 
 let build_config ~local_packages ~branch ~explicit_root_packages ~excludes ~pins ~remotes ~overlay
     =
   let open Rresult.R.Infix in
   Opam_cmd.choose_root_packages ~explicit_root_packages ~local_packages >>= fun root_packages ->
   let root_packages =
-    List.map Opam_cmd.split_opam_name_and_version root_packages |> Opam.sort_uniq
+    List.map split_opam_name_and_version root_packages
+    |> List.sort_uniq String.compare
   in
   let excludes =
-    List.map Opam_cmd.split_opam_name_and_version (local_packages @ excludes) |> Opam.sort_uniq
+    List.map split_opam_name_and_version (local_packages @ excludes)
+    |> List.sort_uniq String.compare
   in
   let remotes = overlay :: remotes in
   Ok { Duniverse.Config.root_packages; excludes; pins; remotes; branch }
@@ -45,7 +52,7 @@ let run (`Repo repo) (`Branch branch) (`Explicit_root_packages explicit_root_pac
   init_tmp_opam ~local_packages ~config >>= fun root ->
   Common.Logs.app (fun l ->
       l "Resolving opam dependencies for %a"
-        Fmt.(list ~sep:(unit " ") Styled_pp.package)
+        Fmt.(list ~sep:(unit " ") string)
         config.root_packages );
   Opam_cmd.calculate_opam ~root ~config >>= fun packages ->
   report_stats ~packages;

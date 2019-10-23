@@ -216,8 +216,7 @@ let add_opam_local_pin ~root ~kind package =
 let run_opam_install ~yes opam_deps =
   let packages =
     List.map
-      (fun (pkg : Duniverse.Deps.Opam.t) ->
-        match pkg.version with Some v -> pkg.name ^ "." ^ v | None -> pkg.name )
+      (fun (pkg : Duniverse.Deps.Opam.t) -> pkg.name ^ "." ^ pkg.version)
       opam_deps
   in
   OS.Cmd.run Cmd.(v "opam" % "install" %% on yes (v "-y") %% of_list packages)

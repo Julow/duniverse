@@ -7,18 +7,14 @@ type resolved = Git.Ref.resolved [@@deriving sexp]
 
 module Deps = struct
   module Opam = struct
-    type t = { name : string; version : string option [@default None] [@sexp_drop_default] }
-    [@@deriving sexp]
+    type t = { name : string; version : string } [@@deriving sexp]
 
-    let equal t t' = String.equal t.name t'.name && Option.equal String.equal t.version t'.version
+    let equal t t' = String.equal t.name t'.name && String.equal t.version t'.version
 
-    let pp fmt = function
-      | { name; version = None } -> Format.fprintf fmt "%s" name
-      | { name; version = Some v } -> Format.fprintf fmt "%s.%s" name v
+    let pp fmt { name; version } = Format.fprintf fmt "%s.%s" name version
 
     let raw_pp fmt { name; version } =
-      let open Pp_combinators.Ocaml in
-      Format.fprintf fmt "@[<hov 2>{ name = %S;@ version = %a }@]" name (option string) version
+      Format.fprintf fmt "@[<hov 2>{ name = %S;@ version = %S }@]" name version
   end
 
   module Source = struct
@@ -158,8 +154,8 @@ end
 
 module Config = struct
   type t = {
-    root_packages : Types.Opam.package list;
-    excludes : Types.Opam.package list;
+    root_packages : string list;
+    excludes : string list;
     pins : Types.Opam.pin list;
     remotes : string list; [@default []]
     branch : string [@default "master"]

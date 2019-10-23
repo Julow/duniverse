@@ -18,6 +18,9 @@ val good : 'a Fmt.t -> 'a Fmt.t
 
 val bad : 'a Fmt.t -> 'a Fmt.t
 
+val quoted : 'a Fmt.t -> 'a Fmt.t
+(** Wrap a formatter in double quotes ("\""). Colored cyan *)
+
 val cached : bool Fmt.t
 (** [cached fmt c] formats [" [CACHED]"] if [c] is [true] and formats nothing
     otherwise.

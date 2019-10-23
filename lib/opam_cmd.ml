@@ -23,10 +23,17 @@ let pp_header = Fmt.(styled `Blue string)
 
 let header = "==> "
 
-let split_opam_name_and_version name =
-  match String.cut ~sep:"." name with
-  | None -> { name; version = None }
-  | Some (name, version) -> { name; version = Some version }
+let parse_opam_packages lines =
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | line :: tl ->
+      match String.cut ~sep:"." line with
+      | None ->
+        Fmt.(Styled_pp.(R.error_msgf "Failed to parse output of %a:@ %a"
+          (quoted string) "opam list" (quoted (bad string)) line))
+      | Some (name, version) -> loop ({ name; version } :: acc) tl
+  in
+  loop [] lines
 
 let strip_ext fname =
   let open Fpath in
@@ -220,7 +227,7 @@ let filter_duniverse_packages ~excludes pkgs =
   let rec fn acc = function
     | hd :: tl ->
         let filter =
-          List.exists (fun e -> e.name = hd.package.name) excludes
+          List.exists (String.equal hd.package.name) excludes
           || List.mem hd.package.name Config.base_packages
           || hd.dev_repo = `Virtual
         in
@@ -231,18 +238,15 @@ let filter_duniverse_packages ~excludes pkgs =
 
 let calculate_opam ~root ~config =
   let { Duniverse.Config.root_packages; pins; excludes; _ } = config in
-  Exec.run_opam_package_deps ~root (List.map string_of_package root_packages)
-  >>| List.map split_opam_name_and_version
-  >>| List.map (fun p ->
-          if List.exists (fun { pin; _ } -> p.name = pin) pins then { p with version = Some "dev" }
-          else p )
+  Exec.run_opam_package_deps ~root root_packages
+  >>= parse_opam_packages
   >>= fun deps ->
   Logs.app (fun l ->
       l "%aFound %a opam dependencies." pp_header header Fmt.(styled `Green int) (List.length deps)
   );
   Logs.info (fun l ->
       l "The dependencies for %a are: %a"
-        Fmt.(list ~sep:(unit ",@ ") pp_package)
+        Fmt.(list ~sep:(unit ",@ ") string)
         root_packages
         Fmt.(list ~sep:(unit ",@ ") pp_package)
         deps );
